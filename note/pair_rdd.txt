@@ -1,0 +1,41 @@
+var alice = sc.parallelize("alice.txt")
+alice.map( x => x.map(y => (y + 1).toChar) ).foreach(println)
+alice.first.map( x => (x + 1).toChar )
+
+val v1 = sc.parallelize( List(1, 2, 3, 4, 5) )
+val w1 = sc.parallelize( List(1, 3, 3, 6) )
+val pair1 = v1.map(x => (x, x + 1))
+(2,3)
+(1,2)
+(3,4)
+(4,5)
+(5,6)
+val pair2 = w1.map(x => (x, x * 10))
+(3,30)
+(1,10)
+(6,60)
+(3,30)
+
+// 공통존재하는 key 에 대한 곱집합
+pair1.join(pair2).foreach(println)
+(3,(4,30))
+(1,(2,10))
+(3,(4,30))
+
+// source 의 key 에 대해 source 와 target 의 value 를 묶어
+// 곱집합으로 표현. right value 는 None 혹은 Some() 으로 표현.
+pair1.leftOuterJoin(pair2).foreach(println)
+(2,(3,None))
+(4,(5,None))
+(1,(2,Some(10)))
+(5,(6,None))
+(3,(4,Some(30)))
+(3,(4,Some(30)))
+
+// target 의 key 에 대해 source 와 target 의 value 를 묶어
+// 곱집합으로 표현. left value 는 None 혹은 Some() 으로 표현.
+pair1.rightOuterJoin(pair2).foreach(println)
+(3,(Some(4),30))
+(3,(Some(4),30))
+(6,(None,60))
+(1,(Some(2),10))

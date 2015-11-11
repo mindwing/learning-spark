@@ -1,0 +1,55 @@
+- 문서내에서 가장 많이 쓰이는 단어 상위 10개
+- 문서내에서 가장 많이 쓰이는 두 단어 (space 를 가운데 두는 두 단어) 상위 10개
+- 문서내의 단어를 기준으로 군집화
+
+[대상 문서]
+ - Fairy Tales of Hans Christian Andersen by H. C. Andersen
+  = (https://www.gutenberg.org/ebooks/27200)
+
+- UTF-8 txt 문서
+  = https://www.gutenberg.org/ebooks/27200.txt.utf-8
+
+=================================
+
+var fairy = sc.textFile("file:/Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+var fairy = sc.textFile("file:///Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+var fairy = sc.textFile("file:/C:/Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+var fairy = sc.textFile("file:///C:/Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+var fairy = sc.textFile("fairy_tales.txt")
+fairy.count
+
+-----
+
+var words = fairy.flatMap(x => x.split(" ")).map(x => (x, 1))
+var words = fairy.flatMap(x => x.split(" ").map(x => (x, 1)))
+
+-----
+
+var byKey = words.reduceByKey((x, y) => (x + y))
+
+var swap = byKey.map(x => (x._2, x._1))
+var sort = swap.sortByKey(false).map(x => (x._2, x._1))
+
+var sort = byKey.sortBy(x => x._2, false)
+var sort = byKey.sortBy(_._2, false)
+
+sort.take(10).map(println)
+
+// 왜 안되지?
+var sort2 = byKey.takeOrdered(10)(Ordering.reverse)
+
+=================================
+
+var fairy = sc.textFile("file:/C:/Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+var words = fairy.flatMap(x => x.split(" ")).map(x => (x, 1))
+var byKey = words.reduceByKey((x, y) => (x + y))
+var sort = byKey.sortBy(_._2, false)
+sort.take(10).map(println)
+
+sc.textFile("file:/C:/Users/mindwing/spark/learning-spark/note/fairy_tales.txt")
+.flatMap(x => x.split(" ")).map(x => (x, 1))
+.reduceByKey((x, y) => (x + y))
+.sortBy(_._2, false)
+.take(10).map(println)
+
+=================================

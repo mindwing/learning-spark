@@ -49,3 +49,53 @@ val storeRating = sc.parallelize(Seq(
 
 val join = storeAddress.join(storeRating)
 join.map(println)
+
+
+// 4-25 Page Rank
+//
+// key: pageId, value: Seq[String] 이웃 pageId Seq
+// links = (("1", ("0", "2")), ("3", ("0", "4")), ("5", ("0", "6")))
+val links = sc.objectFile[(String, Seq[String])]("links")
+              .partitionBy(new HashPartitioner(100))
+              .persist()
+
+// key: pageId, value: rank
+// ranks = (("1", 1.0), ("3", 1.0), ("5", 1.0))
+var ranks = links.mapValues(v => 1.0)
+
+// 10번 반복
+// key: pageId, value: (이웃 pageId Seq), rank
+for (i <- 0 until 10) {
+  // links.join(ranks) 의 결과로 (pageId, (이웃 pageId, rank)) 형태의 카테시안 곱이 됨.
+  // (key 가 정확히 일치하므로 value 의 개수는 그대로이다.)
+  // (5,((0,6),1.0))(3,((0,4),1.0))(1,((0,2),1.0))
+
+  // 그리고 map 의 결과로 이웃 pageId 들은 (pageId, rank / 이웃 pageId count) 형태가 된다.
+  // 마지막으로 flatMap 의 결과로 contributions 는
+  // (0,0.5)(0,0.5)(4,0.5)(6,0.5)(0,0.5)(2,0.5)
+  val contributions = links.join(ranks).flatMap {
+    case (pageId, (links, rank)) =>
+      links.map(dest => (dest, rank / links.size))
+  }
+
+  // contributions 를 reduceByKey 해서 값들을 합하고, 그 값들에 0.15 + 0.85 * v 연산을 한다.
+  // (4,0.575)(0,1.4249999999999998)(6,0.575)(2,0.575)
+  ranks = contributions.reduceByKey((x, y) => x + y).mapValues(v => 0.15 + 0.85 * v)
+}
+
+ranks.saveAsTextFile("ranks")
+
+
+
+val linksData = List(("1", List("0", "2")), ("3", List("0", "4")), ("5", List("0", "6")))
+val links = sc.parallelize(linksData)
+var ranks = links.mapValues(v => 1.0)
+
+// 루프시작
+var cont = links.join(ranks)
+
+// 이거를 하면 1, 3, 5 가 없어지는데??
+val contributions = cont.flatMap {
+  case (pageId, (links, rank)) => links.map(dest => (dest, rank / links.size))
+}
+// 루프종료
